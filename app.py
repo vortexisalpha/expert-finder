@@ -163,4 +163,5 @@ def find():
     return render_template('find.html', google_maps_api_key=os.getenv('GOOGLE_MAPS_API_KEY'))
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=True)
