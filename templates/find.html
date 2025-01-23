@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    <!-- Google Maps JavaScript API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initFindMapTwo&map_ids=YOUR_MAP_ID" async defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="find-section">
+    <h2>Find Experts</h2>
+    <form method="POST" action="{{ url_for('find') }}">
+        <div class="input-group">
+            <label for="query">Find the best <i class="fas fa-search"></i></label>
+            <input type="text" name="query" id="query" placeholder="e.g., Plumber, Electrician" required value="{{ request.form.query if request.form.query else '' }}">
+        </div>
+        <div class="input-group">
+            <label for="location"><i class="fas fa-map-marker-alt"></i> Your Location:</label>
+            <input type="hidden" id="location" name="location" required value="{{ request.form.location if request.form.location else '' }}">
+            <div id="find-map"></div>
+            <button type="button" class="btn" onclick="getCurrentLocation()">Use Current Location</button>
+            <p id="location-error" class="error-message"></p>
+        </div>
+        <button type="submit" class="btn">Find</button>
+    </form>
+
+    {% if experts %}
+    <div class="results">
+        <h3>Top 5 "{{ query }}" near "{{ location }}":</h3>
+        <div class="expert-list">
+            {% for expert in experts %}
+                <div class="expert-card">
+                    <h4>{{ expert.name }}</h4>
+                    <p><strong>Address:</strong> {{ expert.address }}</p>
+                    <p><strong>Rating:</strong> {{ expert.rating }}</p>
+                    <p><strong>Types:</strong> {{ expert.types | join(', ') }}</p>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let map;
+    let marker;
+    let geocoder;
+
+    window.initFindMapTwo = async function() {
+        const { AdvancedMarkerElement } = await google.maps.importLibrary("marker");
+        geocoder = new google.maps.Geocoder();
+        const initialAddress = "{{ location if location else 'New York, USA' }}";
+        geocoder.geocode({ 'address': initialAddress }, function(results, status) {
+            if (status === 'OK') {
+                const location = results[0].geometry.location;
+                map = new google.maps.Map(document.getElementById('find-map'), {
+                    center: location,
+                    zoom: 14,
+                    mapId: 'YOUR_MAP_ID'  // Replace with your actual Map ID
+                });
+                marker = new AdvancedMarkerElement({
+                    position: location,
+                    map: map,
+                    gmpDraggable: true
+                });
+
+                document.getElementById('location').value = results[0].formatted_address;
+
+                // Update address input when marker is dragged
+                marker.addListener('dragend', function() {
+                    geocoder.geocode({ 'location': marker.position }, function(results, status) {
+                        if (status === 'OK') {
+                            if (results[0]) {
+                                document.getElementById('location').value = results[0].formatted_address;
+                            }
+                        }
+                    });
+                });
+
+                // Allow clicking on the map to move the marker
+                map.addListener('click', function(event) {
+                    marker.position = event.latLng;
+                    geocoder.geocode({ 'location': event.latLng }, function(results, status) {
+                        if (status === 'OK') {
+                            if (results[0]) {
+                                document.getElementById('location').value = results[0].formatted_address;
+                            }
+                        }
+                    });
+                });
+            } else {
+                alert('Geocode was not successful for the following reason: ' + status);
+            }
+        });
+    }
+
+    function getCurrentLocation() {
+        const locationErrorElement = document.getElementById('location-error');
+        locationErrorElement.textContent = ''; // Clear any previous error messages
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(function(position) {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+                const latLng = new google.maps.LatLng(lat, lng);
+
+                if (geocoder) {
+                    map.setCenter(latLng);
+                    marker.position = latLng;
+
+                    geocoder.geocode({ 'location': latLng }, function(results, status) {
+                        if (status === 'OK') {
+                            if (results[0]) {
+                                document.getElementById('location').value = results[0].formatted_address;
+                            }
+                        }
+                    });
+                } else {
+                    locationErrorElement.textContent = "Geocoder is not initialized.";
+                }
+            }, function(error) {
+                switch(error.code) {
+                    case error.PERMISSION_DENIED:
+                        locationErrorElement.textContent = "User denied the request for Geolocation.";
+                        break;
+                    case error.POSITION_UNAVAILABLE:
+                        locationErrorElement.textContent = "Location information is unavailable.";
+                        break;
+                    case error.TIMEOUT:
+                        locationErrorElement.textContent = "The request to get user location timed out.";
+                        break;
+                    case error.UNKNOWN_ERROR:
+                        locationErrorElement.textContent = "An unknown error occurred.";
+                        break;
+                }
+            });
+        } else {
+            locationErrorElement.textContent = "Geolocation is not supported by this browser.";
+        }
+    }
+</script>
+{% endblock %}

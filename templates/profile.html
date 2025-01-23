@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block head %}
+    <!-- Google Maps JavaScript API -->
+    <script src="https://maps.googleapis.com/maps/api/js?key={{ google_maps_api_key }}&callback=initMap" async defer></script>
+{% endblock %}
+
+{% block content %}
+<div class="form-section">
+    <h2>Your Profile</h2>
+    <form method="POST" action="{{ url_for('profile') }}">
+        <label for="first_name"><i class="fas fa-user"></i> First Name:</label>
+        <input type="text" id="first_name" name="first_name" required value="{{ session.first_name if session.first_name }}">
+
+        <label for="last_name"><i class="fas fa-user"></i> Last Name:</label>
+        <input type="text" id="last_name" name="last_name" required value="{{ session.last_name if session.last_name }}">
+
+        <label for="email"><i class="fas fa-envelope"></i> Email:</label>
+        <input type="email" id="email" name="email" required value="{{ session.email if session.email }}">
+
+        <label for="location"><i class="fas fa-map-marker-alt"></i> Location:</label>
+        <input type="hidden" id="location" name="location" required value="{{ session.location if session.location }}">
+        <div id="map"></div>
+
+        <button type="submit" class="btn">Update Profile</button>
+    </form>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{ url_for('static', filename='js/map.js') }}"></script>
+<script>
+    const initialLocation = "{{ session.location if session.location else 'New York, USA' }}";
+</script>
+{% endblock %}
